@@ -5,7 +5,7 @@ pipeline {
       steps {
         echo "Testing ..."
         sh '''#!/bin/bash
-        cp test.conf /tmp/test.conf && cat /tmp/test_jenkins.conf
+        cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
         if logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
