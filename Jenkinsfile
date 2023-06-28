@@ -5,8 +5,8 @@ pipeline {
       steps {
         echo "Testing ..."
         sh '''#!/bin/bash
-        cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
-        if /Users/vupham/Downloads/softwares/logstash-8.6.0/bin/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
+        cp test.conf /tmp/test.conf && cat /tmp/test_jenkins.conf
+        if logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
         else
@@ -24,7 +24,7 @@ pipeline {
           fileContent = fileContent.replaceAll('\n', ' ')
           env.textData = fileContent
         }
-        httpRequest httpMode: 'PUT', url: 'https://observability-deployment-cd43ab.es.australiaeast.azure.elastic-cloud.com/_logstash/pipeline/test_jenkins',
+        httpRequest httpMode: 'PUT', url: 'https://observability.es.australiaeast.azure.elastic-cloud.com/_logstash/pipeline/test_jenkins',
         acceptType: 'APPLICATION_JSON',
         contentType: 'APPLICATION_JSON',
         authentication: 'o11y_es_ingest',
