@@ -6,7 +6,7 @@ pipeline {
         echo "Testing ..."
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
-        if logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
+        if /usr/share/logstash/bin/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
         else
