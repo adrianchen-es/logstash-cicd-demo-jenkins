@@ -1,11 +1,17 @@
 pipeline {
   agent any
+  node('label'){
+      //now you are on slave labeled with 'label'
+      def workspace = pwd()
+      //${workspace} will now contain an absolute path to job workspace on slave
+  }
   stages {
     stage("Config validation.") {
       steps {
         echo "Testing ..."
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
+        /usr/share/logstash/bin/logstash -t -f /tmp/test_jenkins.conf;
         if /usr/share/logstash/bin/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
