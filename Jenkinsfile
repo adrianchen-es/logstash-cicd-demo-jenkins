@@ -6,13 +6,30 @@ pipeline {
         echo "Testing ..."
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
-        if /opt/logstash-8.8.1/bin/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
+        if /usr/share/logstash/bin/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
         else
           echo "Syntax Error"
           exit 1 
         fi
+        '''
+      }
+    }
+    stage('Retrieve Secret') {
+       steps {
+           vault credentialId: 'your-vault-credential',
+               path: 'path/to/your/secret',
+               var: 'MY_SECRET'  // Variable to store the retrieved secret
+           }
+       }
+     }
+    stage('LS Keystore update') {
+      sshagent(credentials: ['demo-ssh-id']) {
+        sh '''
+            [ -d ~/.ssh ] || mkdir ~/.ssh && chmod 0700 ~/.ssh
+            ssh-keyscan -t rsa,dsa logstash.domain >> ~/.ssh/known_hosts
+            ssh -tt username@logstash.domain 'echo "$MY_SECRET" | bin/logstash-keystore add ES_TOKEN'
         '''
       }
     }
