@@ -1,10 +1,5 @@
 pipeline {
   agent any
-#  environment {
-#      SECRET1    = vault path: 'secrets', key: 'password1', vaultUrl: 'https://my-vault.com:8200', credentialsId: 'my-creds', engineVersion: "2"
-#      SECRET2    = vault path: 'secrets', key: 'password2', vaultUrl: 'https://my-vault.com:8200', credentialsId: 'my-creds', engineVersion: "2"
-#      NOT_SECRET = vault path: 'secrets', key: 'username', vaultUrl: 'https://my-vault.com:8200', credentialsId: 'my-creds', engineVersion: "2"
-#  }
   stages {
     stage("Config validation.") {
       steps {
