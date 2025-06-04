@@ -1,10 +1,5 @@
 pipeline {
   agent any
-  node('label'){
-      //now you are on slave labeled with 'label'
-      def workspace = pwd()
-      //${workspace} will now contain an absolute path to job workspace on slave
-  }
   stages {
     stage("Config validation.") {
       steps {
