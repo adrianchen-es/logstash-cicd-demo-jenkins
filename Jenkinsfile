@@ -4,6 +4,9 @@ pipeline {
     stage("Config validation.") {
       steps {
         echo "Testing ..."
+        sh '''
+          /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+          '''
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
         /usr/share/logstash/bin/logstash -t -f /tmp/test_jenkins.conf;
@@ -14,6 +17,9 @@ pipeline {
           echo "Syntax Error"
           exit 1 
         fi
+        '''
+        sh '''
+          echo "SECRET1" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET || true
         '''
       }
     }
