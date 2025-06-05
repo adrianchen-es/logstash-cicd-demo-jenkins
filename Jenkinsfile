@@ -49,6 +49,7 @@ pipeline {
           fileContent = fileContent.replaceAll('"', '\"')
           env.textData = fileContent
         }
+        echo "${env.textData}"
         httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
         acceptType: 'APPLICATION_JSON',
         contentType: 'APPLICATION_JSON',
