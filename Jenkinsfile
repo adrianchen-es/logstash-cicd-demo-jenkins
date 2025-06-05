@@ -1,15 +1,21 @@
 pipeline {
   agent any
+  environment {
+        AWS_ACCESS_KEY_ID     = credentials('jenkins-aws-secret-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('jenkins-aws-secret-access-key')
+  }
   stages {
     stage("Config validation.") {
       steps {
         echo "Testing ..."
-        sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+          sh '''
+            /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+            '''
+          sh '''
+            echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
           '''
-        sh '''
-          echo "SECRET1" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET || true
-        '''
+        }
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
         if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
@@ -25,25 +31,25 @@ pipeline {
         '''
       }
     }
-    stage('Clean up Local LS Keystore update') {
-      steps {
-          sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
-          '''
-      }
-    }
     stage('Update Local LS Keystore update') {
       steps {
-          sh '''
-          echo "SECRET1" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET || true
-          '''
+          echo "Updating Keystore ..."
+          wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+            sh '''
+              /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+              '''
+            sh '''
+              echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
+            '''
+          }
       }
     }
 
     stage('Deploy') {
       steps {
+        echo "Deploying ..."
         script {
-          fileContent = readFile file: '/tmp/test_jenkins.conf'
+          def fileContent = readFile file: '/tmp/test_jenkins.conf'
           fileContent = fileContent.replaceAll('\r\n', ' ')
           fileContent = fileContent.replaceAll('\n', ' ')
           env.textData = fileContent
