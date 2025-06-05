@@ -44,8 +44,9 @@ pipeline {
       steps {
         script {
           fileContent = readFile file: '/tmp/test_jenkins.conf'
-          fileContent = fileContent.replaceAll('\r\n', ' ')
-          fileContent = fileContent.replaceAll('\n', ' ')
+          fileContent = fileContent.replaceAll('\n', '\\n')
+          fileContent = fileContent.replaceAll('\r', '\\r')
+          fileContent = fileContent.replaceAll('"', '\"')
           env.textData = fileContent
         }
         httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
