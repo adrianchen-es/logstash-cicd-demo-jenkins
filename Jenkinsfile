@@ -46,7 +46,6 @@ pipeline {
           fileContent = readFile file: '/tmp/test_jenkins.conf'
           fileContent = fileContent.replaceAll('\r\n', ' ')
           fileContent = fileContent.replaceAll('\n', ' ')
-          fileContent = fileContent.replaceAll('$', '\$')
           env.textData = fileContent
         }
         echo "${env.textData}"
