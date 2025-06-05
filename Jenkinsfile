@@ -5,10 +5,10 @@ pipeline {
       steps {
         echo "Testing ..."
         sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
           '''
         sh '''
-          echo "SECRET1" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET || true
+          echo "SECRET1" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET || true
         '''
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
@@ -21,7 +21,7 @@ pipeline {
         fi
         '''
         sh '''
-        /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
         '''
       }
     }
