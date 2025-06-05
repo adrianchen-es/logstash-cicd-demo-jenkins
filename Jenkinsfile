@@ -49,9 +49,7 @@ pipeline {
       steps {
         echo "Deploying ..."
         script {
-          def fileContent = readFile file: '/tmp/test_jenkins.conf'
-          /*fileContent = fileContent.replaceAll('\r\n', ' ')
-          fileContent = fileContent.replaceAll('\n', ' ')*/
+          fileContent = readFile file: '/tmp/test_jenkins.conf'
           fileContent = fileContent.replaceAll('\r', '\\r')
           fileContent = fileContent.replaceAll('\n', '\\n')
           env.textData = fileContent
