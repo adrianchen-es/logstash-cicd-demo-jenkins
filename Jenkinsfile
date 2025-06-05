@@ -48,7 +48,7 @@ pipeline {
           fileContent = fileContent.replaceAll('\n', ' ')
           env.textData = fileContent
         }
-        httpRequest httpMode: 'POST', url: 'https://apm-dev-ac.kb.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
+        httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
         acceptType: 'APPLICATION_JSON',
         contentType: 'APPLICATION_JSON',
         authentication: 'o11y_es_ingest',
