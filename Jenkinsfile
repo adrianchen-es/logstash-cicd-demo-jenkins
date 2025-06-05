@@ -8,13 +8,14 @@ pipeline {
     stage("Config validation.") {
       steps {
         echo "Testing ..."
+        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
           sh '''
             /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
             '''
           sh '''
             echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
           '''
-        
+        }
         sh '''#!/bin/bash
         cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
         if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
