@@ -17,7 +17,7 @@ pipeline {
               // Run Logstash's built-in config test
               // This prevents syntax errors from reaching production
               sh '''
-                /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash VAULT_SECRET || true
+                /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
               '''
           }
           timeout(time: 45, unit: 'SECONDS') {
