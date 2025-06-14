@@ -47,6 +47,8 @@ pipeline {
               '''
             }
           }
+        }
+        stage("Config validation. - Elastic Agent Pipeline") {
           steps {
             echo "Testing ... - Elastic Agent Pipeline"
             wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
@@ -60,7 +62,6 @@ pipeline {
                   echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
                 '''
               }
-              
             }
             timeout(time: 60, unit: 'SECONDS') {
               sh '''#!/bin/bash
