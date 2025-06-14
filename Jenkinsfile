@@ -3,6 +3,7 @@ pipeline {
   environment {
         AWS_ACCESS_KEY_ID     = credentials('jenkins-aws-secret-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('jenkins-aws-secret-access-key')
+        LS_ES_EA_API = credentials('logstash_ea-demo')
   }
   stages {
     stage("Config validation.") {
@@ -17,8 +18,9 @@ pipeline {
           '''
         }
         sh '''#!/bin/bash
-        cp test.conf /tmp/test_jenkins.conf && cat /tmp/test_jenkins.conf
-        if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/test_jenkins.conf | grep "Configuration OK"; then 
+        mkdir -p /tmp/pipeline_deployment
+        cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
+        if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
           echo "Syntax OK"
           exit 0
         else
@@ -28,6 +30,34 @@ pipeline {
         '''
         sh '''
         /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+        '''
+      }
+    }
+    stage("Config validation.") {
+      steps {
+        echo "Testing ..."
+        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
+          sh '''
+            /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+            '''
+          sh '''
+            echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
+          '''
+          
+        }
+        sh '''#!/bin/bash
+        mkdir -p /tmp/pipeline_deployment
+        cp sample_pipeline-ea.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-ea.conf
+        if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-ea.conf | grep "Configuration OK"; then 
+          echo "Syntax OK"
+          exit 0
+        else
+          echo "Syntax Error"
+          exit 1 
+        fi
+        '''
+        sh '''
+        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
         '''
       }
     }
@@ -41,15 +71,20 @@ pipeline {
             sh '''
               echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
             '''
+            sh '''
+            /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
+            '''
+            sh '''
+              echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
+            '''
           }
       }
     }
-
     stage('Deploy') {
       steps {
-        echo "Deploying ..."
+        echo "Deploying ... demo-jenkins-with_secret"
         script {
-          def fileContent = readFile file: '/tmp/test_jenkins.conf'
+          def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-001.conf'
           fileContent = fileContent.replaceAll('\r', '\\\\r')
           fileContent = fileContent.replaceAll('\n', '\\\\n')
           env.textData = fileContent
@@ -80,10 +115,45 @@ pipeline {
         """
       }
     }
+    stage('Deploy Elastic Agent Pipeline') {
+      steps {
+        echo "Deploying ... demo-ea-with_secret"
+        script {
+          def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-ea.conf'
+          fileContent = fileContent.replaceAll('\r', '\\\\r')
+          fileContent = fileContent.replaceAll('\n', '\\\\n')
+          env.textData = fileContent
+        }
+        echo "${env.textData}"
+        httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-ea-with_secret',
+        acceptType: 'APPLICATION_JSON',
+        contentType: 'APPLICATION_JSON',
+        authentication: 'o11y_es_ingest',
+        requestBody: """{
+          "description": "", 
+          "last_modified": "2025-06-04T02:50:51.250Z",
+          "pipeline_metadata": {
+            "type": "logstash_pipeline",
+            "version": "1"
+          },
+          "username": "O11y-cicd-user",
+          "pipeline": "${env.textData}",
+          "pipeline_settings": {
+            "pipeline.workers": 1,
+            "pipeline.batch.size": 125,
+            "pipeline.batch.delay": 50,
+            "queue.type": "memory",
+            "queue.max_bytes": "1gb",
+            "queue.checkpoint.writes": 1024
+          }
+        }
+        """
+      }
+    }
   }
   post {
     always {
-      sh 'rm /tmp/test_jenkins.conf'
+      sh 'rm -rf /tmp/pipeline_deployment/'
     }
   }
 }
