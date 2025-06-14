@@ -25,13 +25,13 @@ pipeline {
                     //       /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
                     //     '''
                     // }
-                    timeout(time: 30, unit: 'SECONDS') {
+                    timeout(time: 45, unit: 'SECONDS') {
                       sh '''
                         echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
                       '''
                     }
                   }
-                  timeout(time: 45, unit: 'SECONDS') {
+                  timeout(time: 60, unit: 'SECONDS') {
                     sh '''#!/bin/bash
                     mkdir -p /tmp/pipeline_deployment
                     cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
@@ -64,14 +64,14 @@ pipeline {
                         /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
                       '''
                     }
-                    timeout(time: 30, unit: 'SECONDS') {
+                    timeout(time: 45, unit: 'SECONDS') {
                       sh '''
                         echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
                       '''
                     }
                     
                   }
-                  timeout(time: 45, unit: 'SECONDS') {
+                  timeout(time: 60, unit: 'SECONDS') {
                     sh '''#!/bin/bash
                     mkdir -p /tmp/pipeline_deployment
                     cp sample_pipeline-ea.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-ea.conf
