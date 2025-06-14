@@ -9,81 +9,93 @@ pipeline {
         LS_ES_EA_API = credentials('logstash_ea-demo')
   }
   stages {
-    stage("Config validation. - Demo Pipeline") {
-      steps {
-        echo "Testing ..."
-        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
-          timeout(time: 30, unit: 'SECONDS') {
-              sh '''
-                /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
-              '''
-          }
-          // timeout(time: 3, unit: 'MINUTES') {
-          //     sh '''
-          //       /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
-          //     '''
-          // }
-          timeout(time: 30, unit: 'SECONDS') {
-            sh '''
-              echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
-            '''
-          }
+    stage("Config validation) {
+        parallel {
+          stage("Config validation. - Demo Pipeline") {
+                steps {
+                  echo "Testing ..."
+                  wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+                    timeout(time: 30, unit: 'SECONDS') {
+                        sh '''
+                          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+                        '''
+                    }
+                    // timeout(time: 3, unit: 'MINUTES') {
+                    //     sh '''
+                    //       /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+                    //     '''
+                    // }
+                    timeout(time: 30, unit: 'SECONDS') {
+                      sh '''
+                        echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
+                      '''
+                    }
+                  }
+                  timeout(time: 45, unit: 'SECONDS') {
+                    sh '''#!/bin/bash
+                    mkdir -p /tmp/pipeline_deployment
+                    cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
+                    if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
+                      echo "Syntax OK"
+                      exit 0
+                    else
+                      echo "Syntax Error"
+                      exit 1 
+                    fi
+                    '''
+                  }
+                  post {
+                    always {
+                      timeout(time: 30, unit: 'SECONDS') {
+                        sh '''
+                        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+                        '''
+                      }
+                    }
+                  }
+                }
+              }
+              stage("Config validation. - Elastic Agent Pipeline") {
+                steps {
+                  echo "Testing ..."
+                  wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
+                    timeout(time: 30, unit: 'SECONDS') {
+                      sh '''
+                        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+                      '''
+                    }
+                    timeout(time: 30, unit: 'SECONDS') {
+                      sh '''
+                        echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
+                      '''
+                    }
+                    
+                  }
+                  timeout(time: 45, unit: 'SECONDS') {
+                    sh '''#!/bin/bash
+                    mkdir -p /tmp/pipeline_deployment
+                    cp sample_pipeline-ea.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-ea.conf
+                    if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-ea.conf | grep "Configuration OK"; then 
+                      echo "Syntax OK"
+                      exit 0
+                    else
+                      echo "Syntax Error"
+                      exit 1 
+                    fi
+                    '''
+                  }
+                  post {
+                    always {
+                      timeout(time: 30, unit: 'SECONDS') {
+                        sh '''
+                        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+                        '''
+                      }
+                    }
+                  }
+                }
+              }
         }
-        timeout(time: 45, unit: 'SECONDS') {
-          sh '''#!/bin/bash
-          mkdir -p /tmp/pipeline_deployment
-          cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
-          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
-            echo "Syntax OK"
-            exit 0
-          else
-            echo "Syntax Error"
-            exit 1 
-          fi
-          '''
-        }
-        timeout(time: 30, unit: 'SECONDS') {
-          sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
-          '''
-        }
-      }
-    }
-    stage("Config validation. - Elastic Agent Pipeline") {
-      steps {
-        echo "Testing ..."
-        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
-          timeout(time: 30, unit: 'SECONDS') {
-            sh '''
-              /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
-            '''
-          }
-          timeout(time: 30, unit: 'SECONDS') {
-            sh '''
-              echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
-            '''
-          }
-          
-        }
-        timeout(time: 45, unit: 'SECONDS') {
-          sh '''#!/bin/bash
-          mkdir -p /tmp/pipeline_deployment
-          cp sample_pipeline-ea.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-ea.conf
-          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-ea.conf | grep "Configuration OK"; then 
-            echo "Syntax OK"
-            exit 0
-          else
-            echo "Syntax Error"
-            exit 1 
-          fi
-          '''
-        }
-        timeout(time: 30, unit: 'SECONDS') {
-          sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
-          '''
-        }
-      }
     }
     stage('Update Local LS Keystore update') {
       steps {
