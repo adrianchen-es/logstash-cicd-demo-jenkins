@@ -6,7 +6,7 @@ pipeline {
         LS_ES_EA_API = credentials('logstash_ea-demo')
   }
   stages {
-    stage("Config validation.") {
+    stage("Config validation. - Demo Pipeline") {
       steps {
         echo "Testing ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
@@ -33,7 +33,7 @@ pipeline {
         '''
       }
     }
-    stage("Config validation.") {
+    stage("Config validation. - Elastic Agent Pipeline") {
       steps {
         echo "Testing ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
