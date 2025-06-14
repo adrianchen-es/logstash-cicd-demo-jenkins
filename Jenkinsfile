@@ -88,6 +88,8 @@ pipeline {
         echo "Deploying ... demo-jenkins-with_secret"
         script {
           def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-001.conf'
+          // Try to replace double quotes with single quotes
+          fileContent = fileContent.replaceAll('"', "'")
           fileContent = fileContent.replaceAll('\r', '\\\\r')
           fileContent = fileContent.replaceAll('\n', '\\\\n')
           env.textData = fileContent
@@ -123,6 +125,8 @@ pipeline {
         echo "Deploying ... demo-ea-with_secret"
         script {
           def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-ea.conf'
+          // Try to replace double quotes with single quotes
+          fileContent = fileContent.replaceAll('"', "'")
           fileContent = fileContent.replaceAll('\r', '\\\\r')
           fileContent = fileContent.replaceAll('\n', '\\\\n')
           env.textData = fileContent
