@@ -41,7 +41,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-           /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+           /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET
           '''
         }
       }
@@ -76,7 +76,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
+          /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET
           '''
         }
       }
