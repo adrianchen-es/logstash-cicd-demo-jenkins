@@ -85,24 +85,24 @@ pipeline {
       steps {
         echo "Updating Keystore ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'],[password: env['LS_ES_EA_API'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
-          timeout(time: 30, unit: 'SECONDS') {
+          timeout(time: 45, unit: 'SECONDS') {
             sh '''
               /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
             '''
           }
-          timeout(time: 30, unit: 'SECONDS') {
+          timeout(time: 45, unit: 'SECONDS') {
             sh '''
               echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
             '''
           }
           echo "Updating Keystore ..."
           wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
-            timeout(time: 30, unit: 'SECONDS') {
+            timeout(time: 45, unit: 'SECONDS') {
               sh '''
               /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
               '''
             }
-            timeout(time: 30, unit: 'SECONDS') {
+            timeout(time: 45, unit: 'SECONDS') {
               sh '''
                 echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
               '''
