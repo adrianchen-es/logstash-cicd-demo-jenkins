@@ -44,14 +44,10 @@ pipeline {
                     fi
                     '''
                   }
-                  post {
-                    always {
-                      timeout(time: 30, unit: 'SECONDS') {
-                        sh '''
-                        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
-                        '''
-                      }
-                    }
+                  timeout(time: 30, unit: 'SECONDS') {
+                    sh '''
+                    /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+                    '''
                   }
                 }
               }
@@ -84,121 +80,124 @@ pipeline {
                     fi
                     '''
                   }
-                  post {
-                    always {
-                      timeout(time: 30, unit: 'SECONDS') {
-                        sh '''
-                        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
-                        '''
-                      }
-                    }
+                  timeout(time: 30, unit: 'SECONDS') {
+                    sh '''
+                    /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+                    '''
                   }
                 }
               }
         }
     }
-    stage('Update Local LS Keystore update') {
-      steps {
-          echo "Updating Keystore ..."
-          wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
-            timeout(time: 30, unit: 'SECONDS') {
-              sh '''
-                /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
-              '''
-            }
-            timeout(time: 30, unit: 'SECONDS') {
-              sh '''
-                echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
-              '''
-            }
-            timeout(time: 30, unit: 'SECONDS') {
-              sh '''
-              /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
-              '''
-            }
-            timeout(time: 30, unit: 'SECONDS') {
-              sh '''
-                echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
-              '''
+    stage('Deployment') {
+      parallel {
+        stage("Deploy demo-jenkins-with_secret") {
+          steps {
+            echo "Updating Keystore ..."
+            wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+              timeout(time: 30, unit: 'SECONDS') {
+                sh '''
+                  /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+                '''
+              }
+              timeout(time: 30, unit: 'SECONDS') {
+                sh '''
+                  echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
+                '''
+              }
             }
           }
-      }
-    }
-    stage('Deploy') {
-      steps {
-        retry(2) {
-          echo "Deploying ... demo-jenkins-with_secret"
-          script {
-            def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-001.conf'
-            // Try to replace double quotes with single quotes
-            fileContent = fileContent.replaceAll('"', "'")
-            fileContent = fileContent.replaceAll('\r', '\\\\r')
-            fileContent = fileContent.replaceAll('\n', '\\\\n')
-            env.textData = fileContent
-          }
-          echo "${env.textData}"
-          httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
-          acceptType: 'APPLICATION_JSON',
-          contentType: 'APPLICATION_JSON',
-          authentication: 'o11y_es_ingest',
-          requestBody: """{
-            "description": "", 
-            "last_modified": "2025-06-04T02:50:51.250Z",
-            "pipeline_metadata": {
-              "type": "logstash_pipeline",
-              "version": "1"
-            },
-            "username": "O11y-cicd-user",
-            "pipeline": "${env.textData}",
-            "pipeline_settings": {
-              "pipeline.workers": 1,
-              "pipeline.batch.size": 125,
-              "pipeline.batch.delay": 50,
-              "queue.type": "memory",
-              "queue.max_bytes": "1gb",
-              "queue.checkpoint.writes": 1024
+          steps {
+            retry(2) {
+              echo "Deploying ... demo-jenkins-with_secret"
+              script {
+                def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-001.conf'
+                // Try to replace double quotes with single quotes
+                fileContent = fileContent.replaceAll('"', "'")
+                fileContent = fileContent.replaceAll('\r', '\\\\r')
+                fileContent = fileContent.replaceAll('\n', '\\\\n')
+                env.textData = fileContent
+              }
+              echo "${env.textData}"
+              httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-jenkins-with_secret',
+              acceptType: 'APPLICATION_JSON',
+              contentType: 'APPLICATION_JSON',
+              authentication: 'o11y_es_ingest',
+              requestBody: """{
+                "description": "", 
+                "last_modified": "2025-06-04T02:50:51.250Z",
+                "pipeline_metadata": {
+                  "type": "logstash_pipeline",
+                  "version": "1"
+                },
+                "username": "O11y-cicd-user",
+                "pipeline": "${env.textData}",
+                "pipeline_settings": {
+                  "pipeline.workers": 1,
+                  "pipeline.batch.size": 125,
+                  "pipeline.batch.delay": 50,
+                  "queue.type": "memory",
+                  "queue.max_bytes": "1gb",
+                  "queue.checkpoint.writes": 1024
+                }
+              }
+              """
             }
           }
-          """
         }
-      }
-    }
-    stage('Deploy Elastic Agent Pipeline') {
-      steps {
-        retry(2) {
-          echo "Deploying ... demo-ea-with_secret"
-          script {
-            def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-ea.conf'
-            // Try to replace double quotes with single quotes
-            fileContent = fileContent.replaceAll('"', "'")
-            fileContent = fileContent.replaceAll('\r', '\\\\r')
-            fileContent = fileContent.replaceAll('\n', '\\\\n')
-            env.textData = fileContent
-          }
-          echo "${env.textData}"
-          httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-ea-with_secret',
-          acceptType: 'APPLICATION_JSON',
-          contentType: 'APPLICATION_JSON',
-          authentication: 'o11y_es_ingest',
-          requestBody: """{
-            "description": "", 
-            "last_modified": "2025-06-04T02:50:51.250Z",
-            "pipeline_metadata": {
-              "type": "logstash_pipeline",
-              "version": "1"
-            },
-            "username": "O11y-cicd-user",
-            "pipeline": "${env.textData}",
-            "pipeline_settings": {
-              "pipeline.workers": 1,
-              "pipeline.batch.size": 125,
-              "pipeline.batch.delay": 50,
-              "queue.type": "memory",
-              "queue.max_bytes": "1gb",
-              "queue.checkpoint.writes": 1024
+        stage('Deploy Elastic Agent Pipeline') {
+          steps {
+            echo "Updating Keystore ..."
+            wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
+              timeout(time: 30, unit: 'SECONDS') {
+                sh '''
+                /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
+                '''
+              }
+              timeout(time: 30, unit: 'SECONDS') {
+                sh '''
+                  echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
+                '''
+              }
             }
           }
-          """
+          steps {
+            retry(2) {
+              echo "Deploying ... demo-ea-with_secret"
+              script {
+                def fileContent = readFile file: '/tmp/pipeline_deployment/sample_pipeline-ea.conf'
+                // Try to replace double quotes with single quotes
+                fileContent = fileContent.replaceAll('"', "'")
+                fileContent = fileContent.replaceAll('\r', '\\\\r')
+                fileContent = fileContent.replaceAll('\n', '\\\\n')
+                env.textData = fileContent
+              }
+              echo "${env.textData}"
+              httpRequest httpMode: 'PUT', url: 'https://apm-dev-ac.es.us-east-2.aws.elastic-cloud.com/_logstash/pipeline/demo-ea-with_secret',
+              acceptType: 'APPLICATION_JSON',
+              contentType: 'APPLICATION_JSON',
+              authentication: 'o11y_es_ingest',
+              requestBody: """{
+                "description": "", 
+                "last_modified": "2025-06-04T02:50:51.250Z",
+                "pipeline_metadata": {
+                  "type": "logstash_pipeline",
+                  "version": "1"
+                },
+                "username": "O11y-cicd-user",
+                "pipeline": "${env.textData}",
+                "pipeline_settings": {
+                  "pipeline.workers": 1,
+                  "pipeline.batch.size": 125,
+                  "pipeline.batch.delay": 50,
+                  "queue.type": "memory",
+                  "queue.max_bytes": "1gb",
+                  "queue.checkpoint.writes": 1024
+                }
+              }
+              """
+            }
+          }
         }
       }
     }
