@@ -13,14 +13,14 @@ pipeline {
       steps {
         echo "Testing ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
-          timeout(time: 60, unit: 'SECONDS') {
+          timeout(time: 45, unit: 'SECONDS') {
               // Run Logstash's built-in config test
               // This prevents syntax errors from reaching production
               sh '''
                 docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
               '''
           }
-          timeout(time: 60, unit: 'SECONDS') {
+          timeout(time: 45, unit: 'SECONDS') {
             sh '''
               echo "${AWS_SECRET_ACCESS_KEY}" | docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add VAULT_SECRET
             '''
@@ -39,9 +39,9 @@ pipeline {
           fi
           '''
         }
-        timeout(time: 30, unit: 'SECONDS') {
+        timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+          docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
           '''
         }
       }
@@ -50,14 +50,14 @@ pipeline {
       steps {
         echo "Testing ... - Elastic Agent Pipeline"
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
-          timeout(time: 30, unit: 'SECONDS') {
+          timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+              docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
             '''
           }
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
+              echo "${LS_ES_EA_API}" | docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add ES_API_SECRET
             '''
           }
         }
@@ -74,9 +74,9 @@ pipeline {
           fi
           '''
         }
-        timeout(time: 30, unit: 'SECONDS') {
+        timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
+          docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
           '''
         }
       }
