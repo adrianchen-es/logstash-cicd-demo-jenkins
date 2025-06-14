@@ -9,7 +9,7 @@ pipeline {
         LS_ES_EA_API = credentials('logstash_ea-demo')
   }
   stages {
-    stage("Config validation) {
+    stage("Config validation") {
         parallel {
           stage("Config validation. - Demo Pipeline") {
                 steps {
