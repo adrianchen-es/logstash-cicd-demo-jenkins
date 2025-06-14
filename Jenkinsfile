@@ -16,18 +16,15 @@ pipeline {
             echo "Testing ..."
             wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
               timeout(time: 30, unit: 'SECONDS') {
+                  // Run Logstash's built-in config test
+                  // This prevents syntax errors from reaching production
                   sh '''
-                    /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+                    docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
                   '''
               }
-              // timeout(time: 3, unit: 'MINUTES') {
-              //     sh '''
-              //       /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
-              //     '''
-              // }
               timeout(time: 45, unit: 'SECONDS') {
                 sh '''
-                  echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
+                  echo "${AWS_SECRET_ACCESS_KEY}" | docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add VAULT_SECRET
                 '''
               }
             }
@@ -50,10 +47,8 @@ pipeline {
               '''
             }
           }
-        }
-        stage("Config validation. - Elastic Agent Pipeline") {
           steps {
-            echo "Testing ..."
+            echo "Testing ... - Elastic Agent Pipeline"
             wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
               timeout(time: 30, unit: 'SECONDS') {
                 sh '''
@@ -89,23 +84,40 @@ pipeline {
         }
       }
     }
+    stage('Deployment - Keystore update') {
+      steps {
+        echo "Updating Keystore ..."
+        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'],[password: env['LS_ES_EA_API'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+          timeout(time: 30, unit: 'SECONDS') {
+            sh '''
+              /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
+            '''
+          }
+          timeout(time: 30, unit: 'SECONDS') {
+            sh '''
+              echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
+            '''
+          }
+          echo "Updating Keystore ..."
+          wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
+            timeout(time: 30, unit: 'SECONDS') {
+              sh '''
+              /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
+              '''
+            }
+            timeout(time: 30, unit: 'SECONDS') {
+              sh '''
+                echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
+              '''
+            }
+          }
+        }
+      }
+    }
     stage('Deployment') {
       parallel {
         stage("Deploy demo-jenkins-with_secret") {
           steps {
-            echo "Updating Keystore ..."
-            wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
-              timeout(time: 30, unit: 'SECONDS') {
-                sh '''
-                  /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET || true
-                '''
-              }
-              timeout(time: 30, unit: 'SECONDS') {
-                sh '''
-                  echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
-                '''
-              }
-            }
             retry(2) {
               echo "Deploying ... demo-jenkins-with_secret"
               script {
@@ -145,19 +157,6 @@ pipeline {
         }
         stage('Deploy Elastic Agent Pipeline') {
           steps {
-            echo "Updating Keystore ..."
-            wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
-              timeout(time: 30, unit: 'SECONDS') {
-                sh '''
-                /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
-                '''
-              }
-              timeout(time: 30, unit: 'SECONDS') {
-                sh '''
-                  echo "${LS_ES_EA_API}" | /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
-                '''
-              }
-            }
             retry(2) {
               echo "Deploying ... demo-ea-with_secret"
               script {
