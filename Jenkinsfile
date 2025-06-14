@@ -17,12 +17,12 @@ pipeline {
               // Run Logstash's built-in config test
               // This prevents syntax errors from reaching production
               sh '''
-                docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
+                docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
               '''
           }
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              echo "${AWS_SECRET_ACCESS_KEY}" | docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add VAULT_SECRET
+              echo "${AWS_SECRET_ACCESS_KEY}" | docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add VAULT_SECRET
             '''
           }
         }
@@ -30,7 +30,7 @@ pipeline {
           sh '''#!/bin/bash
           mkdir -p /tmp/pipeline_deployment
           cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
-          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
+          if docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
             echo "Syntax OK"
             exit 0
           else
@@ -41,7 +41,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
+          docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove VAULT_SECRET || true
           '''
         }
       }
@@ -52,12 +52,12 @@ pipeline {
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
+              docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
             '''
           }
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              echo "${LS_ES_EA_API}" | docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add ES_API_SECRET
+              echo "${LS_ES_EA_API}" | docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore add ES_API_SECRET
             '''
           }
         }
@@ -76,7 +76,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          docker run --rm -v /tmp/logstash:/usr/share/logstash/pipeline/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
+          docker run --rm -v /tmp/logstash/:/usr/share/logstash/config/ docker.elastic.co/logstash/logstash:8.18.2 logstash-keystore remove ES_API_SECRET || true
           '''
         }
       }
