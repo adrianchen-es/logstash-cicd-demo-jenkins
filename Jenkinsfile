@@ -17,12 +17,12 @@ pipeline {
               // Run Logstash's built-in config test
               // This prevents syntax errors from reaching production
               sh '''
-                /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash VAULT_SECRET || true
+                /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash VAULT_SECRET || true
               '''
           }
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              echo "${AWS_SECRET_ACCESS_KEY}" |  /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add VAULT_SECRET
+              echo "${AWS_SECRET_ACCESS_KEY}" |  /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
             '''
           }
         }
@@ -41,7 +41,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-           /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove VAULT_SECRET
+           /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET
           '''
         }
       }
@@ -52,12 +52,12 @@ pipeline {
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['LS_ES_EA_API'], var: 'SECRET']]]) {
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET || true
+              /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET || true
             '''
           }
           timeout(time: 45, unit: 'SECONDS') {
             sh '''
-              echo "${LS_ES_EA_API}" |  /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash add ES_API_SECRET
+              echo "${LS_ES_EA_API}" |  /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add ES_API_SECRET
             '''
           }
         }
@@ -76,7 +76,7 @@ pipeline {
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-          /usr/share/logstash/bin/logstash-keystore --path.settings /etc/logstash remove ES_API_SECRET
+          /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove ES_API_SECRET
           '''
         }
       }
