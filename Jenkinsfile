@@ -28,21 +28,18 @@ pipeline {
         }
         timeout(time: 60, unit: 'SECONDS') {
           sh '''#!/bin/bash
+          set -euo pipefail
           mkdir -p /tmp/pipeline_deployment
-          cp sample_pipeline-001.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-001.conf
-          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-001.conf | grep "Configuration OK"; then 
-            echo "Syntax OK"
-            exit 0
-          else
-            echo "Syntax Error"
-            exit 1 
-          fi
+          cp sample_pipeline-001.conf /tmp/pipeline_deployment/
+          cat /tmp/pipeline_deployment/sample_pipeline-001.conf
+          /usr/share/logstash/bin/logstash --path.settings /tmp/logstash --config.test_and_exit -f /tmp/pipeline_deployment/sample_pipeline-001.conf
           '''
         }
         timeout(time: 45, unit: 'SECONDS') {
           sh '''
-           /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET
-          '''
+        set -euo pipefail
+        /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET
+      '''
         }
       }
     }
@@ -65,7 +62,7 @@ pipeline {
           sh '''#!/bin/bash
           mkdir -p /tmp/pipeline_deployment
           cp sample_pipeline-ea.conf /tmp/pipeline_deployment && cat /tmp/pipeline_deployment/sample_pipeline-ea.conf
-          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash -t -f /tmp/pipeline_deployment/sample_pipeline-ea.conf | grep "Configuration OK"; then 
+          if /usr/share/logstash/bin/logstash --path.settings /tmp/logstash --config.test_and_exit -f /tmp/pipeline_deployment/sample_pipeline-ea.conf | grep "Configuration OK"; then 
             echo "Syntax OK"
             exit 0
           else
