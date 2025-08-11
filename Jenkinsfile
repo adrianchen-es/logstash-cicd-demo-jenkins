@@ -13,6 +13,12 @@ pipeline {
     stage("Config validation. - Demo Pipeline") {
       steps {
         echo "Testing ..."
+        // Ensure /tmp/logstash exists before using it
+        sh '''
+          if [ ! -d /tmp/logstash ]; then
+            mkdir -p /tmp/logstash
+          fi
+        '''
         // Ensure keystore exists before using it
         sh '''
           if [ ! -f /tmp/logstash/logstash.keystore ]; then
