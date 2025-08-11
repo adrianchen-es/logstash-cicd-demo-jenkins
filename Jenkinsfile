@@ -12,6 +12,12 @@ pipeline {
     stage("Config validation. - Demo Pipeline") {
       steps {
         echo "Testing ..."
+        // Ensure keystore exists before using it
+        sh '''
+          if [ ! -f /tmp/logstash/logstash.keystore ]; then
+            /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash create
+          fi
+        '''
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
           timeout(time: 45, unit: 'SECONDS') {
               // Run Logstash's built-in config test
