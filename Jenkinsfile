@@ -190,6 +190,46 @@ pipeline {
         }
       }
     }
+    stage("Validate Demo Pipeline Config") {
+      steps {
+        echo "Validating Logstash config for Demo Pipeline..."
+        // Ensure keystore exists before using it
+        sh '''
+          if [ ! -f /tmp/logstash/logstash.keystore ]; then
+            /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash create
+          fi
+        '''
+        wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
+          timeout(time: 45, unit: 'SECONDS') {
+            sh '''
+              set -euo pipefail
+              /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET || true
+            '''
+          }
+          timeout(time: 45, unit: 'SECONDS') {
+            sh '''
+              set -euo pipefail
+              echo "${AWS_SECRET_ACCESS_KEY}" | /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash add VAULT_SECRET
+            '''
+          }
+        }
+        timeout(time: 60, unit: 'SECONDS') {
+          sh '''#!/bin/bash
+          set -euo pipefail
+          mkdir -p /tmp/pipeline_deployment
+          cp sample_pipeline-001.conf /tmp/pipeline_deployment/
+          cat /tmp/pipeline_deployment/sample_pipeline-001.conf
+          /usr/share/logstash/bin/logstash --path.settings /tmp/logstash --config.test_and_exit -f /tmp/pipeline_deployment/sample_pipeline-001.conf
+          '''
+        }
+        timeout(time: 45, unit: 'SECONDS') {
+          sh '''
+            set -euo pipefail
+            /usr/share/logstash/bin/logstash-keystore --path.settings /tmp/logstash remove VAULT_SECRET
+          '''
+        }
+      }
+    }
   }
   post {
     always {
