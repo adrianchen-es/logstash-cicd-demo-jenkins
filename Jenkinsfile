@@ -95,8 +95,6 @@ pipeline {
             exit 1;
           fi
         '''
-      }
-      steps {
         echo "Updating Keystore ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'],[password: env['LS_ES_EA_API'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
           timeout(time: 45, unit: 'SECONDS') {
