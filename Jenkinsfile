@@ -7,6 +7,7 @@ pipeline {
         AWS_ACCESS_KEY_ID     = credentials('jenkins-aws-secret-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('jenkins-aws-secret-access-key')
         LS_ES_EA_API = credentials('logstash_ea-demo')
+        LOGSTASH_KEYSTORE_PASS = credentials('logstash_pass')
   }
   stages {
     stage("Config validation. - Demo Pipeline") {
@@ -85,6 +86,16 @@ pipeline {
       }
     }
     stage('Deployment - Keystore update') {
+      steps {
+        echo "Check Keystore Presence ..."
+        // Ensure keystore exists before using it
+        sh '''
+          if [ ! -f /etc/logstash/logstash.keystore ]; then
+            echo "Production keystore missing";
+            exit 1;
+          fi
+        '''
+      }
       steps {
         echo "Updating Keystore ..."
         wrap([$class: 'MaskPasswordsBuildWrapper', varPasswordPairs: [[password: env['AWS_ACCESS_KEY_ID'], var: 'SECRET'],[password: env['LS_ES_EA_API'], var: 'SECRET'], [password: env['AWS_SECRET_ACCESS_KEY'], var: 'SECRET']]]) {
